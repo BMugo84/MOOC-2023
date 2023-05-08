@@ -72,4 +72,15 @@ def product(a: int, b: int) -> int:
 
 
 
+# testing
 
+"""
+In Python, the __name__ variable is a special variable that
+gets set to "__main__" when the script is run directly as the 
+main program. It is used to differentiate whether a module is 
+being run as the main program or being imported as a module 
+into another program."""
+
+if __name__ == "__main__":
+    print("testing 1, 2")
+    print(modulo(10, 3))
