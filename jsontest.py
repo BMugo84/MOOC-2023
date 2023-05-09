@@ -1,6 +1,15 @@
 import json
 
 def print_persons(filename: str):
+    """
+    Reads a JSON file containing information about students and prints their name, age and hobbies.
+
+    Args:
+        filename (str): The name of the JSON file.
+
+    Returns:
+        None
+    """
     with open(filename) as my_file:
         data = my_file.read()
 
@@ -8,6 +17,6 @@ def print_persons(filename: str):
 
     for item in description:
         hobbies = ", ".join(item["hobbies"])
-        print(f'{item["name"]} {item["age"]} ({hobbies})')
+        print(f'{item["name"]} {item["age"]} years ({hobbies})')
 
-persons = print_persons("students.json")
+print_persons("students.json")
