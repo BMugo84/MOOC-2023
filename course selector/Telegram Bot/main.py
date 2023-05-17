@@ -1,17 +1,29 @@
 import constants as keys
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 import responses as r
 
 # commands
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! Thanks for chatting with me!")
+
+    """ Statrs the convo"""
+    reply_keyboard = [["test1", "test2", "test3"]]
+
+    await update.message.reply_text(
+        "Hello! Thanks for chatting with me!",
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard,
+            one_time_keyboard=True,
+            input_field_placeholder="Testing?"
+            ) # type: ignore
+        )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('I am a bot. Please type something so that i can respond')
 
 async def custom_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('This is a custom command')
+
 
 # handle responses
 
