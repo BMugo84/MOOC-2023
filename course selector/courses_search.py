@@ -58,13 +58,16 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ) # type: ignore
         )
     
-def handle_response(text:str) -> str:
+def handle_response(text:str) -> tuple:
 
     # fetch university name from df to match against user text 
     unique_uni_name = df['INSTITUTION NAME'].unique()
     processed: str = text.upper()
     if processed in unique_uni_name:
-        return "works"
+        courses_df = df[df['INSTITUTION NAME'] == processed]
+        courses = courses_df['PROGRAMME NAME']
+        reply_keyboard = [[course] for course in courses]
+        return [[course] for course in courses]
     
     return "doesnt work yet"
 
