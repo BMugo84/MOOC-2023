@@ -1,7 +1,10 @@
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
 import constants as keys
 import pandas as pd
+
+# conversation handler 
+UNIVERSITY, COURSE, CUTOFF = range(3)
 
 # keyboard buttons for universities
 universities = [
@@ -57,6 +60,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data['university_response'] = update.message.text# type: ignore
 
+    return UNIVERSITY
+
 async def handle_university(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # fetch text from start_command output
@@ -75,6 +80,8 @@ async def handle_university(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data['course_response'] = update.message.text # type: ignore
 
+    return COURSE
+
 
 async def handle_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -89,19 +96,40 @@ async def handle_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f'{cutoffs}'
     )
 
+    return CUTOFF
+
+async def exit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancels and ends the conversation."""
+    user = update.message.from_user
+    await update.message.reply_text(
+        "Bye! I hope we can talk again some day.", reply_markup=ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
+
 
 
 if __name__ == '__main__':
     app = Application.builder().token(keys.API_KEY).build()
 
-    # add handler to handle user input 
-    app.add_handler(CommandHandler('start', start_command))
+    # # add handler to handle user input 
+    # app.add_handler(CommandHandler('start', start_command))
 
-    # add handler to handle university messages
-    app.add_handler(MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_university))
+    # # add handler to handle university messages
+    # app.add_handler(MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_university))
 
-    # add handler to handle courses
-    app.add_handler(MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_course))
+    # # add handler to handle courses
+    # app.add_handler(MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_course))
 
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start_command)],
+        states={
+            UNIVERSITY: [MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_university)],
+            COURSE: [MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_course)],
+        },
+        fallbacks=[CommandHandler("exit", exit)],
+    )
+
+    app.add_handler(conv_handler)
     print('Polling...')
-    app.run_polling(poll_interval=3)
+    app.run_polling(poll_interval=3) # type: ignore
