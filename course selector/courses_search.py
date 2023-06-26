@@ -3,9 +3,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 import constants as keys
 import pandas as pd
 
-# import dataframe 
-df = pd.read_excel('DEGREE COURSES.xlsx')
-
+# keyboard buttons for universities
 universities = [
     "University of Nairobi",
     "Kenyatta University",
@@ -40,86 +38,103 @@ universities = [
     "Taita Taveta University"
 ]
 
+# import dataframe 
+df = pd.read_excel('DEGREE COURSES.xlsx')
 
-# commands
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    """ Statrs the convo"""
+    """
+    This function handles the start command and displays a list of universities as keyboard buttons.
+    """
     reply_keyboard = [[university] for university in universities]
+    await update.message.reply_text(
+        "Hello! I am the Brainhost bot here to help you select courses!\n"
+        "Please select the university you are interested in:",
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+    )
+
+    context.user_data['university_response'] = update.message.text
+
+async def handle_university(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    This function handles the selection of a university by the user.
+    It fetches the text from the previous command's output and creates a keyboard button for courses.
+    It then prompts the user to select a course from the available options.
+    """
+    # Fetch text from start_command output
+    text = update.message.text.upper()
+
+    # Filter the dataframe to get courses for the selected university
+    filtered_df = df.loc[df['INSTITUTION NAME'] == text]
+    courses = filtered_df['PROGRAMME NAME'].tolist()
+
+    # Create keyboard buttons for courses
+    reply_keyboard = ReplyKeyboardMarkup([[course] for course in courses], one_time_keyboard=True)
 
     await update.message.reply_text(
-        "Hello! I am Brainhost bot here to help you select courses!"
-        "Which course branch are you interested in?",
-        reply_markup = ReplyKeyboardMarkup(
-            reply_keyboard,
-            one_time_keyboard=True,
-            input_field_placeholder="Testing?",
-            resize_keyboard = True
-            ) # type: ignore
-        )
-    
-def handle_response(text:str) -> tuple:
+        "Please select the course needed:",
+        reply_markup=reply_keyboard
+    )
 
-    # fetch university name from df to match against user text 
-    unique_uni_name = df['INSTITUTION NAME'].unique()
-    processed: str = text.upper()
-    if processed in unique_uni_name:
-        courses_df = df[df['INSTITUTION NAME'] == processed]
-        courses = courses_df['PROGRAMME NAME']
-        reply_keyboard = [[course] for course in courses]
-        return [[course] for course in courses]
-    
-    return "doesnt work yet"
-
-    
-
-    
-    
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('I am a bot. Please type something so that i can respond')
+    context.user_data['course_response'] = update.message.text
 
 
+async def handle_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    This function handles the selection of a course by the user.
+    It fetches the text from the user's input and retrieves the selected university and course responses from the user data.
+    It then prints out the cutoff points for the selected course.
+    """
+    text = update.message.text
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Fetch text from handle_university output
+    start_response = context.user_data.get('university_response')
+    first_level_response = context.user_data.get('course_response')
 
-    # we want to check if the message type is from a group
-    message_type: str = update.message.chat.type
-    text: str = update.message.text
+    # Retrieve cutoff points for the selected course and university
+    filtered_df = df.loc[
+        (df['PROGRAMME NAME'] == text.upper()) & (df['INSTITUTION NAME'] == first_level_response.upper())
+    ]
+    cutoffs = filtered_df[
+        ['2015 CUTOFF', '2016 CUTOFF', '2017 CUTOFF', '2018 CUTOFF', '2019 CUTOFF', '2020 CUTOFF', '2021 CUTOFF']
+    ]
 
-    # debugger
-    print(f'user ({update.message.chat.id}) in  {message_type}: "{text}"')
+    # Convert cutoffs to a dictionary
+    cutoffs = cutoffs.to_dict(orient='list')
+    print(cutoffs)
 
-    # check whether message type is group or private
-    if message_type == 'group':
+    # Prepare the output lines for cutoff points
+    output_lines = []
+    for year, cutoff_values in cutoffs.items():
+        line = f"{year}: {', '.join(map(str, cutoff_values))}"
+        output_lines.append(line)
 
-        # if the message is from a group and a user responds using the bot username 
-        if keys.BOT_USERNAME in text:
-            new_text: str = text.replace(keys.BOT_USERNAME, '').strip()
-            response: str = handle_response(new_text)
-        else:
-            return
-    else:
-        response: str = handle_response(text)
+    await update.message.reply_text(
+        "\n".join(output_lines)
+    )
 
-    # debugger
-    print('Bot: ', response)
-    await update.message.reply_text(response)
+async def exit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancels and ends the conversation."""
+    user = update.message.from_user
+    await update.message.reply_text(
+        "Bye! I hope we can talk again some day.", reply_markup=ReplyKeyboardRemove()
+    )
 
 
-
-async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f'Update {update} caused error {context.error}')
 
 if __name__ == '__main__':
     app = Application.builder().token(keys.API_KEY).build()
 
+    # add handler to handle user input 
     app.add_handler(CommandHandler('start', start_command))
-    app.add_handler(CommandHandler('help', help_command))
 
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+    # add handler to handle university messages
+    app.add_handler(MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_university))
 
-    app.add_error_handler(error)
+    # add handler to handle courses
+    app.add_handler(MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_course))
+
+    # add handler to exit
+    app.add_handler(CommandHandler('exit', exit))
 
     print('Polling...')
     app.run_polling(poll_interval=3)
