@@ -1,0 +1,7 @@
+Math;1;2
+science;4;2
+ItP;5;5
+acip;1;10
+itai;2;5
+algo101;4;1
+compmodels;5;8
